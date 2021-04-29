@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -13,25 +14,21 @@ import (
 
 type data struct {
 	Month   string
-	Cupcake string
+	Cupcake int
 }
 
-type bigdata2 struct {
-	Datarows [][]interface{} `json:"datarows"`
-	//Datarows []data
+type insideSchema struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
-// type responseData struct {
-// 	Schema   []string
-// 	total    int
-// 	datarows [][]data
-// 	size     int
-// 	status   int
-// }
-
-// type Response struct {
-// 	Body string `json: body`
-// }
+type responseData struct {
+	Schema   []insideSchema `json:"schema"`
+	Total    int            `json:"total"`
+	Datarows [][]string     `json:"datarows"`
+	Size     int            `json:"size"`
+	Status   int            `json:"status"`
+}
 
 func main() {
 	lambda.Start(handler)
@@ -46,7 +43,7 @@ func handler() (events.APIGatewayProxyResponse, error) {
 
 	temp, err := json.Marshal(q)
 
-	fmt.Println(string(temp))
+	//fmt.Println("temp: ", string(temp))
 
 	if err != nil {
 		fmt.Println(err)
@@ -71,36 +68,40 @@ func handler() (events.APIGatewayProxyResponse, error) {
 		fmt.Println(err)
 	}
 
-	//fmt.Println(string(bodyText))
+	//fmt.Println("bodyText: ", string(bodyText))
 
-	temp1 := &bigdata2{}
+	var respo responseData
 
-	x := json.Unmarshal(bodyText, temp1)
+	json.Unmarshal(bodyText, &respo)
 
-	if x != nil {
-		fmt.Println(err)
-	}
-
-	//fmt.Println(temp1.Datarows)
+	//fmt.Println(respo.Datarows)
 
 	var finalData []data
-	for _, dd := range temp1.Datarows {
-		result := data{dd[0].(string), dd[1].(string)}
+
+	for _, val := range respo.Datarows {
+		t, _ := strconv.Atoi(val[1])
+		result := data{
+			Month:   val[0],
+			Cupcake: t,
+		}
 
 		finalData = append(finalData, result)
 	}
 
-	ress, err := json.Marshal(finalData)
+	//fmt.Println(finalData)
+
+	finalResponse, err := json.Marshal(finalData)
+
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(string(ress))
 
+	fmt.Println(string(finalResponse))
 	m := make(map[string]string)
 
 	m["content-type"] = "application/json"
 	m["Access-Control-Allow-Origin"] = "*"
 
-	return events.APIGatewayProxyResponse{Body: string(ress), Headers: m, StatusCode: 200}, nil
+	return events.APIGatewayProxyResponse{Body: string(finalResponse), Headers: m, StatusCode: 200}, nil
 
 }
